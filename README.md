@@ -104,3 +104,6 @@ BILIBILIAS 依托于B站开发，尊重并支持哔哩哔哩的各项规则和�
 [<img src="https://edgeone.ai/_next/static/media/headLogo.daeb48ad.png?auto=format&fit=max&w=64"
 alt="EdgeOne"
 height="60">](https://edgeone.ai/?from=github)
+---
+
+> Fork maintained by **文强哥 (Johnny520)** · 默认主题已升级为「液态玻璃 UI（Liquid Glass）」
