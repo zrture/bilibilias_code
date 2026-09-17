@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,11 +34,12 @@ fun <T> ASCommonSelectGrid(
         modifier = modifier
             .sizeIn(maxHeight = (60 * 2 + 2 * 10).dp),
     ) {
-        items(items, key = key) {
+        // key 拼接 index 保证唯一，避免同名项重复 key 崩溃
+        itemsIndexed(items, key = { index, item -> "${key(item)}_$index" }) { _, item ->
             FilterChip(
-                selected = selected(it),
+                selected = selected(item),
                 onClick = {
-                    onClick(it)
+                    onClick(item)
                 },
                 label = {
                     Column(
@@ -50,7 +51,7 @@ fun <T> ASCommonSelectGrid(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            title(it),
+                            title(item),
                             maxLines = 2,
                             fontSize = 14.sp,
                             overflow = TextOverflow.Ellipsis,

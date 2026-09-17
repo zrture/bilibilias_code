@@ -10,7 +10,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed as rowItemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
@@ -60,10 +60,11 @@ fun <T, R> ASSectionEpisodeSelection(
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
-            items(
-                sectionList ?: emptyList(),
-                key = { it.hashCode() }
-            ) { info ->
+            rowItemsIndexed(
+                items = sectionList ?: emptyList(),
+                // key 拼接 index 保证唯一，避免相等 section 对象 hashCode 重复导致崩溃
+                key = { idx, info -> "${info.hashCode()}_$idx" }
+            ) { _, info ->
                 ToggleButton(
                     checked = sectionChecked(info),
                     onCheckedChange = {
