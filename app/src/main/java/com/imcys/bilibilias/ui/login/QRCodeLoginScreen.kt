@@ -70,7 +70,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.imcys.bilibilias.R
-import com.imcys.bilibilias.common.utils.FirebaseExt
 import com.imcys.bilibilias.database.entity.LoginPlatform
 import com.imcys.bilibilias.di.ProvideKoinApplication
 import com.imcys.bilibilias.network.ApiStatus
@@ -157,7 +156,6 @@ fun QRCodeLoginScreen(
         when (loginUserInfoState) {
             is NetWorkResult.Success<*> -> {
                 vm.saveLoginInfo(loginUserInfoState.data) {
-                    FirebaseExt.logLogin("QRCode")
                     if (route.isFromRoam || route.isFromAnalysis) {
                         // 如果是从漫游页面进入的，登录成功后直接返回
                         onToBack()

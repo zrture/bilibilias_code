@@ -205,6 +205,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">ជ្រើសទាំងអស់</string>
     <string name="download_deselect_all">បោះបង់ជ្រើសទាំងអស់</string>
+    <string name="download_resume_all">បន្តទាំងអស់</string>
     <string name="download_delete_confirm_title">លុបភារកិច្ចទាញយក</string>
     <string name="download_delete_confirm_message">តើអ្នកចង់លុបទិន្នន័យនិងឯកសារជ្រើសទេ?</string>
     <string name="download_caching">កំពុងផ្ទុកវីដេអូ AS...</string>

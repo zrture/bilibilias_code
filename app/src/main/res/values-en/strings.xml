@@ -201,6 +201,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">Select All</string>
     <string name="download_deselect_all">Deselect All</string>
+    <string name="download_resume_all">Resume All</string>
     <string name="download_delete_confirm_title">Delete Download Task</string>
     <string name="download_delete_confirm_message">Are you sure you want to delete the selected task record and files?</string>
     <string name="download_caching">AS video caching...</string>

@@ -195,6 +195,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">سب منتخب کریں</string>
     <string name="download_deselect_all">سب رد کریں</string>
+    <string name="download_resume_all">سب دوبارہ شروع کریں</string>
     <string name="download_delete_confirm_title">ڈاؤن لوڈ ٹاسک ڈیلیٹ کریں</string>
     <string name="download_delete_confirm_message">کیا آپ منتخب ٹاسکس اور فائلز ڈیلیٹ کرنا چاہتے ہیں؟</string>
     <string name="download_caching">AS ویڈیو کیش کیا جا رہا ہے...</string>

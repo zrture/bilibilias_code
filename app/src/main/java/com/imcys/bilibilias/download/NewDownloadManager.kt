@@ -11,12 +11,15 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import com.imcys.bilibilias.common.event.sendToastEvent
+import com.imcys.bilibilias.common.event.sendToastEventOnBlocking
 import com.imcys.bilibilias.common.utils.download.DanmakuXmlUtil
 import com.imcys.bilibilias.common.utils.toHttps
 import com.imcys.bilibilias.data.model.download.DownloadSubTask
 import com.imcys.bilibilias.data.model.download.DownloadTaskTree
 import com.imcys.bilibilias.data.model.download.DownloadTreeNode
 import com.imcys.bilibilias.data.model.download.DownloadViewInfo
+import com.imcys.bilibilias.data.model.download.lowercase
 import com.imcys.bilibilias.data.model.download.MediaContainerConfig
 import com.imcys.bilibilias.data.model.video.ASLinkResultType
 import com.imcys.bilibilias.data.repository.AppSettingsRepository
@@ -60,6 +63,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * 新的下载管理器 - 使用重构后的组件
@@ -82,6 +86,7 @@ class NewDownloadManager(
     companion object {
         private const val MAX_CONCURRENT_DOWNLOADS = 1
         private const val QUEUE_CHECK_INTERVAL_MS = 1000L
+        private const val SERVICE_START_FLAG_RESET_DELAY_MS = 5_000L
 
         suspend fun buildRefererUrl(downloadTaskRepository: DownloadTaskRepository, task: AppDownloadTask): String {
             return when (task.downloadTask.type) {
@@ -108,6 +113,9 @@ class NewDownloadManager(
     private val _downloadTasks = MutableStateFlow<List<AppDownloadTask>>(emptyList())
     private var isInit = false
     private var isDownloading = false
+
+    // 服务启动防重入：一键恢复等场景会快速多次触发，避免重复启动与绑定服务
+    private val isServiceStarting = AtomicBoolean(false)
     private val activeDownloadJobs = ConcurrentHashMap<Long, Job>()
     private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -131,12 +139,94 @@ class NewDownloadManager(
         if (isInit) return
         isInit = true
 
-        val segments = downloadTaskRepository.getSegmentAll().last()
-        segments.forEach { segment ->
-            if (segment.downloadState !in listOf(DownloadState.PAUSE, DownloadState.COMPLETED)) {
-                downloadTaskRepository.deleteSegment(segment.segmentId)
+        val currentTasks = _downloadTasks.value.toMutableList()
+        downloadTaskRepository.getSegmentAll().last().forEach { segment ->
+            when (segment.downloadState) {
+                // 已完成/已取消：仅保留记录
+                DownloadState.COMPLETED, DownloadState.CANCELLED -> Unit
+
+                // 已暂停：加载进内存列表，允许用户手动恢复
+                DownloadState.PAUSE -> {
+                    rebuildPausedTask(segment)?.let { rebuilt ->
+                        if (currentTasks.none { it.downloadSegment.segmentId == segment.segmentId }) {
+                            currentTasks.add(rebuilt)
+                        }
+                    }
+                }
+
+                // 中间状态：应用被杀导致的下载中断，重置为暂停并进列表，等待手动恢复
+                DownloadState.WAITING,
+                DownloadState.DOWNLOADING,
+                DownloadState.MERGING,
+                DownloadState.PRE_TASK,
+                DownloadState.POST_TASK -> {
+                    val paused = segment.copy(downloadState = DownloadState.PAUSE)
+                    downloadTaskRepository.updateSegment(paused)
+                    rebuildPausedTask(paused)?.let { rebuilt ->
+                        if (currentTasks.none { it.downloadSegment.segmentId == segment.segmentId }) {
+                            currentTasks.add(rebuilt)
+                        }
+                    }
+                }
+
+                // 历史异常任务维持原有清理行为
+                DownloadState.ERROR -> downloadTaskRepository.deleteSegment(segment.segmentId)
             }
         }
+        _downloadTasks.value = currentTasks
+    }
+
+    /**
+     * 依据数据库持久化信息重建被中断/暂停的下载任务
+     * 分片文件（含 .downloading 半成品）保留在原路径，恢复下载时可断点续传
+     */
+    private suspend fun rebuildPausedTask(segment: DownloadSegment): AppDownloadTask? {
+        val node = downloadTaskRepository.getTaskNodeByNodeId(segment.nodeId) ?: return null
+        val task = downloadTaskRepository.getTaskById(node.taskId) ?: return null
+
+        val containerConfig = if (segment.downloadMode == DownloadMode.AUDIO_ONLY) {
+            MediaContainerConfig(audioContainer = segment.mediaContainer)
+        } else {
+            MediaContainerConfig(videoContainer = segment.mediaContainer)
+        }
+
+        // 当时的附加选项（嵌字幕/封面/弹幕等）未持久化，恢复时按仅下载媒体处理
+        val downloadViewInfo = DownloadViewInfo(
+            downloadMode = segment.downloadMode,
+            mediaContainerConfig = containerConfig,
+            downloadMedia = true
+        )
+
+        return AppDownloadTask(
+            downloadTask = task,
+            downloadSegment = segment,
+            downloadSubTasks = createSubTasksForPausedSegment(segment, containerConfig),
+            downloadViewInfo = downloadViewInfo,
+            downloadStage = DownloadStage.DOWNLOAD,
+            cover = getCoverForSegment(segment),
+            downloadState = segment.downloadState
+        )
+    }
+
+    /**
+     * 离线重建下载分片（路径规则与首次创建一致，保证能命中已有分片文件续传）
+     */
+    private fun createSubTasksForPausedSegment(
+        segment: DownloadSegment,
+        mediaContainerConfig: MediaContainerConfig
+    ): List<DownloadSubTask> = when (segment.downloadMode) {
+        DownloadMode.AUDIO_VIDEO -> listOf(
+            createSubTask(segment, DownloadSubTaskType.VIDEO, mediaContainerConfig),
+            createSubTask(segment, DownloadSubTaskType.AUDIO, mediaContainerConfig)
+        )
+
+        DownloadMode.VIDEO_ONLY -> listOf(
+            createSubTask(segment, DownloadSubTaskType.VIDEO, mediaContainerConfig)
+        )
+
+        DownloadMode.AUDIO_ONLY -> listOf(
+            createSubTask(segment, DownloadSubTaskType.AUDIO, mediaContainerConfig)
+        )
     }
 
     fun getAllDownloadTasks(): StateFlow<List<AppDownloadTask>> = _downloadTasks.asStateFlow()
@@ -192,8 +282,9 @@ class NewDownloadManager(
         updateTaskState(task, DownloadState.WAITING)
         downloadTaskRepository.updateSegment(task.downloadSegment.copy(downloadState = DownloadState.WAITING))
 
+        // 冷启动恢复场景：服务尚未绑定，需先拉起下载队列
         if (!isDownloading) {
-            isDownloading = true
+            startDownloadQueueService()
         }
         checkAndStartNextDownload()
     }
@@ -208,7 +299,18 @@ class NewDownloadManager(
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     suspend fun resumeAllTasks() {
         val pausedTasks = _downloadTasks.value.filter { it.downloadState == DownloadState.PAUSE }
-        pausedTasks.forEach { resumeTask(it.downloadSegment.segmentId) }
+        if (pausedTasks.isEmpty()) return
+
+        pausedTasks.forEach { task ->
+            updateTaskState(task, DownloadState.WAITING)
+            downloadTaskRepository.updateSegment(task.downloadSegment.copy(downloadState = DownloadState.WAITING))
+        }
+
+        // 冷启动恢复场景：服务尚未绑定，需先拉起下载队列（批量只拉一次）
+        if (!isDownloading) {
+            startDownloadQueueService()
+        }
+        checkAndStartNextDownload()
     }
 
     suspend fun downloadImageToAlbum(imageUrl: String, fileName: String, saveDirName: String) =
@@ -228,6 +330,7 @@ class NewDownloadManager(
     fun startDownloadQueueService() {
         if (isDownloading) return
         if (!isAppInForeground(context)) return
+        if (!isServiceStarting.compareAndSet(false, true)) return
 
         val intent = Intent(context, DownloadService::class.java)
 
@@ -246,6 +349,12 @@ class NewDownloadManager(
                     startDownloadQueue(it)
                 }
             }
+        }
+
+        // 兜底复位：服务连接异常未回调时，避免标志占用导致后续无法拉起队列
+        GlobalScope.launch(Dispatchers.IO) {
+            delay(SERVICE_START_FLAG_RESET_DELAY_MS)
+            isServiceStarting.set(false)
         }
     }
 
@@ -266,6 +375,7 @@ class NewDownloadManager(
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private suspend fun startDownloadQueue(downloadService: DownloadService) {
         isDownloading = true
+        isServiceStarting.set(false)
 
         while (true) {
             checkAndStartNextDownload()
@@ -333,12 +443,17 @@ class NewDownloadManager(
                 quality = downloadQuality
             }
 
-            // 后置任务
-            handleSuccessor(task, service, quality)
+            // 后置任务（仅媒体下载需要 FFmpeg 合并归档；纯附加内容在前置阶段已直接落盘）
+            if (task.downloadViewInfo.downloadMedia) {
+                handleSuccessor(task, service, quality)
+            } else {
+                handleAttachmentOnlyCompletion(task)
+            }
 
             val finalTask = findTaskById(task.downloadSegment.segmentId)
             if (finalTask?.downloadState == DownloadState.COMPLETED) {
                 removeTaskFromList(task.downloadSegment.segmentId)
+                sendToastEvent("「${task.downloadSegment.title}」下载完成")
             }
         }
     }
@@ -346,10 +461,10 @@ class NewDownloadManager(
     private suspend fun handlePredecessor(task: AppDownloadTask, service: DownloadService) {
         updateTaskState(task, DownloadState.PRE_TASK)
 
-        // 下载嵌入字幕
+        // 下载嵌入字幕（按本集 cid 获取字幕信息，避免多P任务全部用解析页当前分P的字幕）
         if (task.downloadViewInfo.embedCC) {
             val subtitles = subtitleDownloader.downloadSubtitlesForEmbed(
-                task.downloadViewInfo.videoPlayerInfoV2,
+                videoInfoFetcher.fetchSegmentPlayerInfoV2(task.downloadSegment),
                 task.downloadSegment.segmentId
             )
             task.updateRuntimeInfo(task.taskRuntimeInfo.copy(subtitles = subtitles))
@@ -375,11 +490,15 @@ class NewDownloadManager(
             downloadDanmakuForTask(task)
         }
 
-        // 下载字幕文件
+        // 下载字幕文件（复用视频命名规则生成基础名，保证与视频文件可匹配）
         if (task.downloadViewInfo.downloadCC) {
+            val subtitleBaseName = namingConventionHandler.buildFileName(
+                task.downloadSegment.namingConventionInfo,
+                task.downloadViewInfo.ccFileType.lowercase()
+            ).substringBeforeLast(".")
             subtitleDownloader.downloadSubtitlesToFile(
-                task.downloadViewInfo.videoPlayerInfoV2,
-                task.downloadSegment.title,
+                videoInfoFetcher.fetchSegmentPlayerInfoV2(task.downloadSegment),
+                subtitleBaseName,
                 task.downloadViewInfo.ccFileType
             )
         }
@@ -570,6 +689,21 @@ class NewDownloadManager(
         }
     }
 
+    /**
+     * 纯附加内容下载（字幕/封面/弹幕）的完成处理：
+     * 文件已在前置阶段直接写入下载目录，无需合并归档，标记完成即可
+     */
+    private suspend fun handleAttachmentOnlyCompletion(task: AppDownloadTask) {
+        val segment = downloadTaskRepository.getSegmentBySegmentId(task.downloadSegment.segmentId)
+        if (segment == null) {
+            updateTaskState(task, DownloadState.ERROR)
+            return
+        }
+        val newSegment = segment.copy(downloadState = DownloadState.COMPLETED)
+        downloadTaskRepository.updateSegment(newSegment)
+        updateTaskState(task.copy(downloadSegment = newSegment), DownloadState.COMPLETED)
+    }
+
     private fun createTempOutputFile(task: AppDownloadTask): File {
         val saveDir = task.downloadSubTasks.first().savePath.substringBeforeLast("/")
         val extension =
@@ -699,6 +833,11 @@ class NewDownloadManager(
         nodeType: DownloadTaskNodeType,
         downloadViewInfo: DownloadViewInfo
     ): List<DownloadSubTask> {
+        // 纯附加内容下载（字幕/封面/弹幕）不需要媒体流信息，
+        // 跳过每集的 playurl 请求，避免批量创建时长时间卡在"创建下载任务"
+        if (!downloadViewInfo.downloadMedia) {
+            return emptyList()
+        }
         val playerInfo = videoInfoFetcher.fetchVideoPlayerInfo(segment, nodeType, downloadViewInfo)
         val videoData = videoInfoFetcher.extractVideoData(playerInfo, downloadViewInfo)
             ?: return emptyList()
@@ -823,6 +962,7 @@ class NewDownloadManager(
     private fun handleTaskError(task: AppDownloadTask, error: Exception) {
         updateTaskState(task, DownloadState.ERROR)
         error.printStackTrace()
+        sendToastEventOnBlocking("「${task.downloadSegment.title}」下载失败")
     }
 
     private fun updateTaskState(task: AppDownloadTask, state: DownloadState) {

@@ -56,7 +56,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.navigation3.runtime.NavKey
-import com.baidu.mobstat.StatService
 import com.imcys.bilibilias.R
 import com.imcys.bilibilias.datastore.AppSettings
 import com.imcys.bilibilias.datastore.AppSettings.AgreePrivacyPolicyState.Agreed
@@ -418,7 +417,6 @@ fun SettingScreen(
             onClickDismiss = {
                 showPrivacyPolicy = false
                 showPrivacyPolicyRefuseTip = true
-                StatService.setAuthorizedState(context, false)
                 vm.updatePrivacyPolicyAgreement(Refuse)
             }
         )

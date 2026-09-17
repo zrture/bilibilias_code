@@ -98,6 +98,14 @@ class DownloadViewModel(
         viewModelScope.launch { downloadManager.resumeTask(segmentId) }
     }
 
+    /**
+     * 一键恢复全部暂停任务
+     */
+    @SuppressLint("MissingPermission")
+    fun resumeAllDownloadTasks() {
+        viewModelScope.launch { downloadManager.resumeAllTasks() }
+    }
+
     fun cancelDownloadTask(segmentId: Long) {
         viewModelScope.launch { downloadManager.cancelTask(segmentId) }
     }

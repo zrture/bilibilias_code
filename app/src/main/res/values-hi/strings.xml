@@ -205,6 +205,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">सभी चुनें</string>
     <string name="download_deselect_all">सभी का चयन रद्द करें</string>
+    <string name="download_resume_all">सभी फिर से शुरू करें</string>
     <string name="download_delete_confirm_title">डाउनलोड कार्य हटाएँ</string>
     <string name="download_delete_confirm_message">क्या आप चयनित कार्य और फाइलें हटाना चाहते हैं?</string>
     <string name="download_caching">AS वीडियो कैशिंग...</string>

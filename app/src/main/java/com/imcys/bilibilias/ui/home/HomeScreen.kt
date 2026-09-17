@@ -1,8 +1,6 @@
 package com.imcys.bilibilias.ui.home
 
 import ClipboardAutoHandler
-import android.content.Context
-import android.content.pm.PackageManager
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedContent
@@ -109,13 +107,11 @@ import com.imcys.bilibilias.ui.weight.ASTextButton
 import com.imcys.bilibilias.ui.weight.ASTopAppBar
 import com.imcys.bilibilias.ui.weight.BILIBILIASTopAppBarStyle
 import com.imcys.bilibilias.ui.weight.SurfaceColorCard
-import com.imcys.bilibilias.ui.weight.tip.ASWarringTip
 import com.imcys.bilibilias.weight.ASLoginPlatformFilterChipRow
 import com.imcys.bilibilias.weight.AsAutoError
 import com.imcys.bilibilias.weight.DownloadTaskCard
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
-import java.security.MessageDigest
 import kotlin.math.min
 
 @OptIn(
@@ -338,14 +334,6 @@ private fun HomeContent(
 
     var closeBulletinDialogShow by remember { mutableStateOf(false) }
     var bulletinDialogShow by remember { mutableStateOf(false) }
-    var unknownAppSign by remember { mutableStateOf(false) }
-
-    val currentSHA1 = rememberSignatureSHA1(context)
-    LaunchedEffect(currentSHA1) {
-        if (currentSHA1 == null || !checkSign(currentSHA1)) {
-            unknownAppSign = true
-        }
-    }
 
     LaunchedEffect(Unit) {
         vm.initOldAppInfo(context)
@@ -363,24 +351,6 @@ private fun HomeContent(
                 ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            if (unknownAppSign) {
-                item {
-                    ASWarringTip(
-                        Modifier
-                            .animateItem()
-                            .animateContentSize()
-                    ) {
-                        Text(
-                            if (BuildConfig.DEBUG) {
-                                "当前App处于Debug模式，如果您并非开发人员，请谨慎使用，建议在Github公开的渠道进行下载。"
-                            } else {
-                                "当前应用签名未知，请谨慎使用！建议在Github公开的渠道进行下载。"
-                            }
-                        )
-                    }
-                }
-            }
-
             homeLayoutTypesetList.forEach { layout ->
                 if (!layout.isHidden) {
                     when (layout.type) {
@@ -1081,42 +1051,3 @@ private fun LoginInfoBottomDialog(
     }
 }
 
-@Composable
-private fun rememberSignatureSHA1(context: Context = LocalContext.current): String? {
-    val packageName = context.packageName
-    return remember(packageName, context) {
-        try {
-            val packageInfo = context.packageManager.getPackageInfo(
-                packageName,
-                if (android.os.Build.VERSION.SDK_INT >= 28)
-                    PackageManager.GET_SIGNING_CERTIFICATES else PackageManager.GET_SIGNATURES
-            )
-            val signatures = if (android.os.Build.VERSION.SDK_INT >= 28) {
-                packageInfo.signingInfo?.apkContentsSigners
-            } else {
-                @Suppress("DEPRECATION")
-                packageInfo.signatures
-            }
-            val cert = signatures?.getOrNull(0)?.toByteArray()
-            if (cert != null) {
-                val md = MessageDigest.getInstance("SHA1")
-                val publicKey = md.digest(cert)
-                publicKey.joinToString(":") { "%02X".format(it) }
-            } else null
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
-    }
-}
-
-private fun checkSign(actual: String?) : Boolean {
-    val officeSign = "8E:B3:80:FB:C0:32:86:98:5B:8F:86:59:B2:79:16:75:A0:AB:21:DB"
-    val officeAlphaSign = "7F:44:47:60:4B:BF:FB:A8:06:FD:13:DF:7F:E3:5D:AA:70:4B:D5:54"
-    return isSignatureSHA1Match(actual, officeSign) ||
-            isSignatureSHA1Match(actual, officeAlphaSign)
-}
-
-private fun isSignatureSHA1Match(actual: String?, expected: String): Boolean {
-    return actual?.equals(expected, ignoreCase = true) == true
-}

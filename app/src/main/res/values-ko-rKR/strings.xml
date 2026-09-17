@@ -205,6 +205,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">전체 선택</string>
     <string name="download_deselect_all">선택 해제</string>
+    <string name="download_resume_all">전체 재개</string>
     <string name="download_delete_confirm_title">다운로드 작업 삭제</string>
     <string name="download_delete_confirm_message">선택한 작업과 파일을 삭제하시겠습니까?</string>
     <string name="download_caching">AS 영상 캐싱 중...</string>

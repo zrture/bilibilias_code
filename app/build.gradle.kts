@@ -1,18 +1,20 @@
 import com.imcys.bilibilias.buildlogic.BILIBILIASBuildType
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.bilibilias.android.application)
     alias(libs.plugins.bilibilias.android.koin)
-    alias(libs.plugins.bilibilias.baidu.jar)
-    alias(libs.plugins.gms.google.services)
-    alias(libs.plugins.firebase.crashlytics)
-    alias(libs.plugins.firebase.perf)
     alias(libs.plugins.kotlin.plugin.serialization)
     alias { libs.plugins.kotlin.parcelize }
 }
 val enabledPlayAppMode: String by project
 val enabledAnalytics: String by project
-val baiduStatId: String = project.findProperty("as.baidu.stat.id")?.toString() ?: ""
+
+// 本地签名配置（读取 local.properties，该文件不进版本库）
+val localSigningProps = Properties().apply {
+    val propsFile = rootProject.file("local.properties")
+    if (propsFile.exists()) propsFile.inputStream().use { load(it) }
+}
 
 android {
     namespace = "com.imcys.bilibilias"
@@ -23,8 +25,6 @@ android {
         versionCode = 316
         versionName = "3.1.6"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders["BAIDU_STAT_ID"] = baiduStatId
-        buildConfigField("String", "BAIDU_STAT_ID", """"$baiduStatId"""".trimIndent())
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a","x86_64")
         }
@@ -61,6 +61,17 @@ android {
                     storePassword = System.getenv("ALPHA_KEYSTORE_PASSWORD")
                     keyAlias = System.getenv("ALPHA_KEY_ALIAS")
                     keyPassword = System.getenv("ALPHA_KEY_PASSWORD")
+                    enableV3Signing = true
+                    enableV4Signing = true
+                }
+            } else if (localSigningProps.getProperty("as.signing.file")?.let { file(it).exists() } == true) {
+                // 本地环境：使用 local.properties 中配置的正式签名
+                signingConfigs.create("local-alpha").apply {
+                    storeFile = file(localSigningProps.getProperty("as.signing.file"))
+                    storePassword = localSigningProps.getProperty("as.signing.storePassword")
+                    keyAlias = localSigningProps.getProperty("as.signing.keyAlias")
+                    keyPassword = localSigningProps.getProperty("as.signing.keyPassword")
+                        ?: localSigningProps.getProperty("as.signing.storePassword")
                     enableV3Signing = true
                     enableV4Signing = true
                 }
@@ -125,17 +136,6 @@ android {
         }
     }
 
-    if (!enabledPlayAppMode.toBoolean() && enabledAnalytics.toBoolean()) {
-        /**
-         * 百度统计静态清单合并
-         */
-        androidComponents {
-            onVariants { variant ->
-                variant.sources.manifests.addStaticManifestFile("src/baidu/AndroidManifest.xml")
-            }
-        }
-    }
-
 }
 
 dependencies {
@@ -143,9 +143,6 @@ dependencies {
     implementation(project(":core:data"))
 
     implementation(libs.ffmpeg.kit.x6kb)
-
-    // Firebase 选配
-    firebaseDependencies(enabledAnalytics.toBoolean())
 
     // 彩带
     implementation(libs.konfetti.compose)
@@ -160,9 +157,6 @@ dependencies {
 
     // Google Play 选配
     googlePlayDependencies(enabledPlayAppMode.toBoolean())
-
-    // 百度统计
-    baiduStatDependencies()
 
     // Shizuku
     implementation(libs.shizuku.api)
@@ -180,17 +174,6 @@ dependencies {
 
 }
 
-// 百度统计依赖配置
-fun DependencyHandlerScope.baiduStatDependencies() {
-    val baiduJar = fileTree("libs") { include("Baidu_Mtj_android_*.jar") }
-    if (!baiduJar.isEmpty) {
-        if (enabledAnalytics.toBoolean() && !enabledPlayAppMode.toBoolean()) {
-            implementation(baiduJar)
-        } else {
-            compileOnly(baiduJar)
-        }
-    }
-}
 // Google Play 依赖配置
 fun DependencyHandlerScope.googlePlayDependencies(enabled: Boolean) {
     val googlePlayLibs = listOf(
@@ -203,34 +186,5 @@ fun DependencyHandlerScope.googlePlayDependencies(enabled: Boolean) {
         } else {
             compileOnly(it)
         }
-    }
-}
-
-
-// Firebase 依赖配置
-fun DependencyHandlerScope.firebaseDependencies(enabled: Boolean) {
-    if (enabled) {
-        implementation(platform(libs.firebase.bom))
-        implementation(libs.firebase.crashlytics)
-        implementation(libs.firebase.crashlytics.ndk)
-        implementation(libs.firebase.analytics)
-        implementation(libs.firebase.config)
-        implementation(libs.firebase.messaging)
-        implementation(libs.firebase.inappmessaging.display) {
-            exclude(group = "com.google.firebase", module = "protolite-well-known-types")
-        }
-        implementation(libs.firebase.perf) {
-            exclude(group = "com.google.protobuf", module = "protobuf-javalite")
-            exclude(group = "com.google.firebase", module = "protolite-well-known-types")
-        }
-    } else {
-        compileOnly(platform(libs.firebase.bom))
-        compileOnly(libs.firebase.crashlytics)
-        compileOnly(libs.firebase.crashlytics.ndk)
-        compileOnly(libs.firebase.analytics)
-        compileOnly(libs.firebase.config)
-        compileOnly(libs.firebase.messaging)
-        compileOnly(libs.firebase.inappmessaging.display)
-        compileOnly(libs.firebase.perf)
     }
 }

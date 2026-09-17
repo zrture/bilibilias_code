@@ -27,8 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
-import com.google.firebase.Firebase
-import com.google.firebase.app
 import com.imcys.bilibilias.common.event.AnalysisEvent
 import com.imcys.bilibilias.common.event.sendAnalysisEvent
 import com.imcys.bilibilias.common.update.GooglePlayAppUpdateManage
@@ -44,10 +42,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import androidx.compose.runtime.collectAsState
-import com.baidu.mobstat.StatService
-import com.imcys.bilibilias.common.data.CommonBuildConfig
-import com.imcys.bilibilias.common.utils.analyticsSafe
-import com.imcys.bilibilias.common.utils.baiduAnalyticsSafe
 import com.imcys.bilibilias.ui.weight.ASTextButton
 
 class MainActivity : ComponentActivity() {
@@ -60,9 +54,6 @@ class MainActivity : ComponentActivity() {
     private var showSkipVersion = MutableStateFlow(false)
     private var googlePlaySkipVersionListener: () -> Unit = {}
     private var performedInstallListen = {}
-
-    private var agreePrivacyPolicyState: AppSettings.AgreePrivacyPolicyState =
-        AppSettings.AgreePrivacyPolicyState.Default
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -118,8 +109,6 @@ class MainActivity : ComponentActivity() {
         }
         // 处理特殊厂商的适配选项
         specialManufacturersOption()
-        // 初始化设置
-        initAppSetting()
         // 初始化通知渠道
         initNotificationChannel()
         // 更新检查
@@ -184,46 +173,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * 初始化APP设置
-     */
-    private fun initAppSetting() {
-        lifecycleScope.launch(Dispatchers.IO) {
-            appSettingsFlow.collect {
-                agreePrivacyPolicyState = it.agreePrivacyPolicy
-                CommonBuildConfig.agreedPrivacyPolicy = it.agreePrivacyPolicy ==
-                        AppSettings.AgreePrivacyPolicyState.Agreed
-                initFirebase(it.agreePrivacyPolicy)
-                initBaiduAnalytics(it.agreePrivacyPolicy)
-            }
-        }
-    }
-
-    /**
-     * 初始化百度统计
-     */
-    fun initBaiduAnalytics(state: AppSettings.AgreePrivacyPolicyState) {
-        baiduAnalyticsSafe {
-            StatService.setAuthorizedState(this, state == AppSettings.AgreePrivacyPolicyState.Agreed)
-            StatService.start(this)
-        }
-    }
-
-    /**
-     * 初始化Firebase
-     */
-    private fun initFirebase(state: AppSettings.AgreePrivacyPolicyState) {
-        analyticsSafe {
-            if (BuildConfig.DEBUG) {
-                Firebase.app.isDataCollectionDefaultEnabled = false
-                return@analyticsSafe
-            }
-            Firebase.app.isDataCollectionDefaultEnabled =
-                state == AppSettings.AgreePrivacyPolicyState.Agreed
-        }
-    }
-
-
     private fun initNotificationChannel() {
         // 创建文件下载进度渠道
         createDownloadNotificationChannel()
@@ -284,23 +233,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-    override fun onResume() {
-        super.onResume()
-        baiduAnalyticsSafe {
-            if (agreePrivacyPolicyState != AppSettings.AgreePrivacyPolicyState.Agreed) return
-            StatService.onResume(this)
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        baiduAnalyticsSafe {
-            if (agreePrivacyPolicyState != AppSettings.AgreePrivacyPolicyState.Agreed) return
-            StatService.onPause(this)
-        }
-    }
-
 
 }
 

@@ -196,6 +196,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">全選択</string>
     <string name="download_deselect_all">選択解除</string>
+    <string name="download_resume_all">すべて再開</string>
     <string name="download_delete_confirm_title">ダウンロードタスク削除</string>
     <string name="download_delete_confirm_message">選択したタスクとファイルを削除しますか？</string>
     <string name="download_caching">AS動画キャッシュ中...</string>

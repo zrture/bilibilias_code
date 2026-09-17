@@ -7,7 +7,6 @@ import com.imcys.bilibilias.common.event.AnalysisEvent
 import com.imcys.bilibilias.common.event.sendAnalysisEvent
 import com.imcys.bilibilias.common.event.sendToastEvent
 import com.imcys.bilibilias.common.utils.AsRegexUtil
-import com.imcys.bilibilias.common.utils.FirebaseExt
 import com.imcys.bilibilias.common.utils.TextType
 import com.imcys.bilibilias.common.utils.toHttps
 import com.imcys.bilibilias.data.model.download.CCFileType
@@ -411,7 +410,6 @@ class AnalysisViewModel(
     fun updateSelectSeason(seasonId: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             handleDonghuaSeasonId(seasonId)
-            FirebaseExt.logBangumiParse(ssId = seasonId)
         }
     }
 
@@ -446,7 +444,6 @@ class AnalysisViewModel(
                 asLinkResultType = ASLinkResultType.BILI.Donghua(epId, it)
             )
         }
-        FirebaseExt.logBangumiParse(epId = epId)
     }
 
     private fun asDonghuaPlayerInfo(
@@ -692,7 +689,6 @@ class AnalysisViewModel(
             }
             when (it.status) {
                 ApiStatus.SUCCESS -> {
-                    FirebaseExt.logVideoParse(it.data?.bvid)
                     // 检查充电
                     if (it.data?.isUpowerExclusive == true) {
                         val boostInfo = loadBoostVideoInfo()

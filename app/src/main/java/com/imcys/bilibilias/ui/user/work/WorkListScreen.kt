@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ContainedLoadingIndicator
@@ -137,14 +138,15 @@ private fun WorkList(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), modifier = Modifier.animateItem())
         }
 
-        items(uiState.items, key = { it.bvid }) {
+        // bvid 可能因置顶视频重复出现，用 index 兜底避免 key 冲突崩溃
+        itemsIndexed(uiState.items, key = { index, item -> "${item.bvid}_$index" }) { _, item ->
             WorkCard(
                 modifier = Modifier.animateItem(),
-                bvId = it.bvid,
-                title = it.title,
-                pic = "${it.pic.toHttps()}@672w_378h_1c",
-                view = it.play,
-                danmu = it.danmu,
+                bvId = item.bvid,
+                title = item.title,
+                pic = "${item.pic.toHttps()}@672w_378h_1c",
+                view = item.play,
+                danmu = item.danmu,
             )
         }
 

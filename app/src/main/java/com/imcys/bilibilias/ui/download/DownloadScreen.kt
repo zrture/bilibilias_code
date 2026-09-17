@@ -60,6 +60,7 @@ import com.imcys.bilibilias.R
 import com.imcys.bilibilias.common.event.sendToastEvent
 import com.imcys.bilibilias.common.event.sendToastEventOnBlocking
 import com.imcys.bilibilias.database.entity.download.DownloadSegment
+import com.imcys.bilibilias.database.entity.download.DownloadState
 import com.imcys.bilibilias.datastore.AppSettings
 import com.imcys.bilibilias.ui.download.navigation.DownloadRoute
 import com.imcys.bilibilias.ui.weight.ASTextButton
@@ -145,8 +146,10 @@ fun DownloadScreen(route: DownloadRoute, onToBack: () -> Unit) {
                         selectIndex = selectIndex,
                         haptics = haptics,
                         currentSortType = currentSortType,
+                        hasPausedTasks = downloadListState.any { it.downloadState == DownloadState.PAUSE },
                         onUpdateSelectIndex = { selectIndex = it },
-                        onUpdateSortType = { vm.updateDownloadSortType(it) }
+                        onUpdateSortType = { vm.updateDownloadSortType(it) },
+                        onResumeAll = { vm.resumeAllDownloadTasks() }
                     )
                 }
             }
@@ -157,7 +160,8 @@ fun DownloadScreen(route: DownloadRoute, onToBack: () -> Unit) {
             ) {
                 when (selectIndex) {
                     0 -> {
-                        items(downloadListState, key = { it.downloadSegment.platformId }) { task ->
+                        // 用 DB 主键 segmentId 作 key，避免同一视频重复创建任务时 platformId 冲突导致崩溃
+                        items(downloadListState, key = { it.downloadSegment.segmentId }) { task ->
                             DownloadTaskCard(
                                 modifier = Modifier.animateItem(),
                                 task = task,
@@ -280,8 +284,10 @@ private fun PageChangeTools(
     selectIndex: Int,
     haptics: HapticFeedback,
     currentSortType: AppSettings.DownloadSortType,
+    hasPausedTasks: Boolean,
     onUpdateSelectIndex: (Int) -> Unit,
-    onUpdateSortType: (AppSettings.DownloadSortType) -> Unit
+    onUpdateSortType: (AppSettings.DownloadSortType) -> Unit,
+    onResumeAll: () -> Unit
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
 
@@ -339,6 +345,14 @@ private fun PageChangeTools(
                             )
                         }
                 }
+            }
+        }
+
+        // 一键恢复（仅“下载中”标签页且存在暂停任务时显示）
+        if (selectIndex == 0 && hasPausedTasks) {
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onResumeAll) {
+                Text(stringResource(R.string.download_resume_all))
             }
         }
     }

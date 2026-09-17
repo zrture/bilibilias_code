@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -86,7 +87,8 @@ fun LikeVideoContent(
             }
         }
 
-        items(likeVideoList.data?.list ?: emptyList(), key = { it.cid ?: it.bvid}) { item ->
+        // cid 为空时回退的 bvid 可能重复（分页重叠/置顶），用 index 兜底避免 key 冲突崩溃
+        itemsIndexed(likeVideoList.data?.list ?: emptyList(), key = { index, item -> "${item.bvid}_${item.cid ?: index}" }) { _, item ->
             UserWorkCard(
                 modifier = Modifier.animateItem(),
                 bvId = item.bvid,

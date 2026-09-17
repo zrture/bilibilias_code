@@ -17,8 +17,10 @@ import com.imcys.bilibilias.network.model.video.BILIDonghuaPlayerSynthesize
 import com.imcys.bilibilias.network.model.video.BILIVideoDash
 import com.imcys.bilibilias.network.model.video.BILIVideoDurl
 import com.imcys.bilibilias.network.model.video.BILIVideoPlayerInfo
+import com.imcys.bilibilias.network.model.video.BILIVideoPlayerInfoV2
 import com.imcys.bilibilias.network.model.video.convertAudioQualityIdValue
 import com.imcys.bilibilias.network.model.video.convertVideoQualityIdValue
+import kotlinx.coroutines.flow.last
 import kotlinx.serialization.json.Json
 
 /**
@@ -65,6 +67,18 @@ class VideoInfoFetcher(
 
             else -> throw IllegalStateException("缓存类型不支持: ${nodeType.name}")
         }
+    }
+
+    /**
+     * 获取分片所属分P的播放信息V2（含字幕列表）。
+     * 批量下载时 DownloadViewInfo.videoPlayerInfoV2 仅是解析页当前分P的数据，
+     * 字幕信息必须按本集 cid 重新获取，否则所有集数共用同一份字幕内容。
+     */
+    suspend fun fetchSegmentPlayerInfoV2(segment: DownloadSegment): NetWorkResult<BILIVideoPlayerInfoV2?> {
+        return videoInfoRepository.getVideoPlayerInfoV2(
+            cid = segment.platformId.toLong(),
+            bvId = getSegmentBvId(segment)
+        ).last()
     }
 
     /**

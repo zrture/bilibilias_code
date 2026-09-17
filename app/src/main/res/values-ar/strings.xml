@@ -207,6 +207,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">تحديد الكل</string>
     <string name="download_deselect_all">إلغاء تحديد الكل</string>
+    <string name="download_resume_all">استئناف الكل</string>
     <string name="download_delete_confirm_title">حذف مهمة التنزيل</string>
     <string name="download_delete_confirm_message">هل تريد حذف السجلات والملفات المحددة؟</string>
     <string name="download_caching">جارٍ حفظ فيديو AS المؤقت...</string>

@@ -72,7 +72,7 @@ class SubtitleDownloader(
             val finalUrl = if (!url.contains("https")) "https:" else ""
             val videoCCInfo = videoInfoRepository.getVideoCCInfo((finalUrl + url).toHttps())
             val content = convertCc(videoCCInfo, ccFileType)
-            val fileName = "${title}_${cc.lan}_${ccFileType.lowercase()}"
+            val fileName = "${title}.${cc.lan}.${ccFileType.lowercase()}"
 
             val subtitleType = when (ccFileType) {
                 CCFileType.ASS -> FileOutputManager.SubtitleType.ASS

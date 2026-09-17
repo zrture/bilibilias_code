@@ -1,7 +1,6 @@
 package com.imcys.bilibilias.network.di
 
 import android.util.Log
-import com.imcys.bilibilias.common.data.CommonBuildConfig
 import com.imcys.bilibilias.datastore.userAppSettingsStore
 import com.imcys.bilibilias.network.AsCookiesStorage
 import com.imcys.bilibilias.network.BuildConfig

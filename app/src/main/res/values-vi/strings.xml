@@ -197,6 +197,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">Chọn tất cả</string>
     <string name="download_deselect_all">Bỏ chọn tất cả</string>
+    <string name="download_resume_all">Tiếp tục tất cả</string>
     <string name="download_delete_confirm_title">Xóa tác vụ tải xuống</string>
     <string name="download_delete_confirm_message">Bạn có chắc muốn xóa tác vụ và tệp đã chọn không?</string>
     <string name="download_caching">Đang lưu video AS vào bộ nhớ đệm...</string>

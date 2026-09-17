@@ -207,6 +207,7 @@
     <!-- Download screen related strings -->
     <string name="download_select_all">Выбрать всё</string>
     <string name="download_deselect_all">Отменить выбор</string>
+    <string name="download_resume_all">Возобновить всё</string>
     <string name="download_delete_confirm_title">Удалить задачу загрузки</string>
     <string name="download_delete_confirm_message">Вы действительно хотите удалить выбранные задачи и файлы?</string>
     <string name="download_caching">Видео AS кэшируется...</string>

@@ -6,8 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.core.net.toUri
-import com.imcys.bilibilias.BuildConfig
-import com.imcys.bilibilias.common.data.CommonBuildConfig
 import com.imcys.bilibilias.common.event.sendToastEventOnBlocking
 import com.imcys.bilibilias.network.ApiStatus
 import com.imcys.bilibilias.network.FlowNetWorkResult
@@ -67,20 +65,4 @@ suspend fun <T> autoRequestRetry(
         count++
     }
     return lastResult ?: error("请求异常")
-}
-
-inline fun analyticsSafe(action: () -> Unit) {
-    if (BuildConfig.ENABLED_ANALYTICS && CommonBuildConfig.agreedPrivacyPolicy) {
-        action()
-    }
-}
-
-inline fun baiduAnalyticsSafe(action: () -> Unit) {
-    if (BuildConfig.ENABLED_ANALYTICS && !BuildConfig.ENABLED_PLAY_APP_MODE) {
-        action()
-    }
-}
-
-fun isEnabledAnalytics(): Boolean {
-    return BuildConfig.ENABLED_ANALYTICS
 }

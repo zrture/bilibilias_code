@@ -45,13 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.NavKey
-import com.google.firebase.Firebase
-import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.analytics.analytics
-import com.google.firebase.analytics.logEvent
 import com.imcys.bilibilias.R
-import com.imcys.bilibilias.common.utils.FirebaseExt
-import com.imcys.bilibilias.common.utils.analyticsSafe
 import com.imcys.bilibilias.network.ApiStatus
 import com.imcys.bilibilias.ui.weight.ASAlertDialog
 import com.imcys.bilibilias.ui.weight.ASAsyncImage
@@ -136,7 +130,6 @@ fun CookeLoginContent(
                         shape = CardDefaults.shape, onClick = {
                             showSavingDialog = true
                             scope.launch {
-                                FirebaseExt.logLogin("Cookie")
                                 vm.saveLoginCookie()
                                 showSavingDialog = false
                                 onFinish()

@@ -2,8 +2,6 @@ package com.imcys.bilibilias.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.Firebase
-import com.google.firebase.app
 import com.imcys.bilibilias.data.repository.AppSettingsRepository
 import com.imcys.bilibilias.data.repository.QRCodeLoginRepository
 import com.imcys.bilibilias.data.repository.UserInfoRepository
@@ -49,8 +47,6 @@ class BILIBILIASAppViewModel(
     fun updatePrivacyPolicyAgreement(agreed: AppSettings.AgreePrivacyPolicyState) {
         viewModelScope.launch {
             appSettingsRepository.updatePrivacyPolicyAgreement(agreed)
-            Firebase.app.isDataCollectionDefaultEnabled =
-                agreed == AppSettings.AgreePrivacyPolicyState.Agreed
         }
     }
 
