@@ -77,7 +77,9 @@ fun UserPlayHistoryContent(vm: UserPlayHistoryViewModel, paddingValues: PaddingV
 
         items(itemList.itemCount, key = { index ->
             val item = itemList[index]
-            item?.history?.bvid?.ifBlank { "empty_$index" } ?: "empty_$index"
+            // bvid 拼接 index 保证 key 唯一：历史记录中多P/番剧同一 bvid 存在多条记录，纯 bvid 会重复 key 崩溃
+            val bvid = item?.history?.bvid
+            if (bvid.isNullOrBlank()) "empty_$index" else "${bvid}_$index"
         }) { index ->
             itemList[index]?.let { item ->
                 HistoryPlayVideoCard(
